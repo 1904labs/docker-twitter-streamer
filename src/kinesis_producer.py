@@ -12,7 +12,6 @@ class RecordAccumulator(object):
 
     def __init__(self):
         self.limit = 20
-        self.full = 100
         self.container = []
     
     def empty(self):
@@ -20,7 +19,7 @@ class RecordAccumulator(object):
         return result
 
     def full(self):
-        return (True if len(self.container) >= self.limit else False)
+        return True if len(self.container) >= self.limit else False
     
     def append(self, record):
         self.container.append(record)
