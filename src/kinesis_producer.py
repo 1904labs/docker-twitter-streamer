@@ -26,12 +26,10 @@ class RecordAccumulator(object):
         self.container.append(record)
         
 class KinesisProducer(object):
-    def __init__(self):
-        self.region = os.environ.get("KINESIS_REGION", 'us-east-1')
-        self.api_name = os.environ.get("KINESIS_API_NAME", 'firehose')
-        self.stream_name = os.environ.get("KINESIS_STREAM_NAME", 'TwitterStream')
+    def __init__(self, api_name, region_name, stream_name):
+        self.client = boto3.client(api_name, region_name=region_name)
+        self.stream_name = stream_name
         self.accumulator = RecordAccumulator()
-        self.client = boto3.client(self.api_name, region_name=self.region)
 
     def send(self, partition_key, data):
         self.accumulator.append({

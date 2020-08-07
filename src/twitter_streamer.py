@@ -23,8 +23,11 @@ def get_producer():
         from kafka_producer import KafkaProducer
         return KafkaProducer()
     elif os.getenv("KINESIS_STREAM_NAME", False):
+        api_name = os.environ.get("KINESIS_API_NAME", 'firehose')
+        region_name = os.environ.get("KINESIS_REGION", 'us-east-1')
+        stream_name = os.environ.get("KINESIS_STREAM_NAME", 'TwitterStream')
         from kinesis_producer import KinesisProducer
-        return KinesisProducer()
+        return KinesisProducer(api_name, region_name, stream_name)
     else:
         from tweepy_stream import StdoutProducer
         return StdoutProducer()
