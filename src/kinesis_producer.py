@@ -18,5 +18,5 @@ class KinesisProducer(object):
     def send(self, partition_key, data):
         return self.client.put_record(
             DeliveryStreamName=self.stream_name, 
-            Record={"PartitionKey": partition_key, "Data": data }
+            Record={"PartitionKey": partition_key, "Data": data.encode('utf-8') }
         )
