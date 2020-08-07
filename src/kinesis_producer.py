@@ -41,5 +41,4 @@ class KinesisProducer(object):
                 DeliveryStreamName=self.stream_name, 
             )
         else:
-            put_record_batchrtition
             return True
