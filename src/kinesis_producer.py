@@ -20,7 +20,10 @@ class RecordAccumulator(object):
         return result
 
     def full(self):
-        return (len(self.container) >= self.limit)
+        if len(self.container) >= self.limit:
+            return True
+        else:
+            return False
     
     def append(self, record):
         self.container.append(record)
@@ -41,3 +44,5 @@ class KinesisProducer(object):
                 Records=self.accumulator.empty(),
                 DeliveryStreamName=self.stream_name, 
             )
+        else:
+            return True
