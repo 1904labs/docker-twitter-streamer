@@ -1,0 +1,18 @@
+#!/bin/bash 
+
+IMAGE_NAME="twitter-streamer"
+VENDOR="1904labs"
+BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
+VCS_REF=$(git rev-parse --short --verify HEAD)
+BUILD_VERSION=$(git describe --tags ${VCS_REF} | cut -c2-)
+#BUILD_TAG=${BUILD_VERSION#*-}
+BUILD_TAG=latest
+
+docker build . \
+  --build-arg BUILD_DATE=${BUILD_DATE} \
+  --build-arg VCS_REF=${VCS_REF} \
+  --build-arg BUILD_VERSION=${BUILD_VERSION} \
+  --tag "${VENDOR}/${IMAGE_NAME}:${BUILD_TAG:-unknown}"
+
+echo To run this image:
+echo $(docker inspect ${VENDOR}/${IMAGE_NAME}:${BUILD_TAG:-unknown} --format '{{index .ContainerConfig.Labels "org.label-schema.docker.cmd"}}')

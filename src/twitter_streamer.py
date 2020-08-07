@@ -22,7 +22,7 @@ def get_producer():
     elif os.getenv("KAFKA_BOOTSTRAP_SERVER", False):
         from kafka_producer import KafkaProducer
         return KafkaProducer()
-    elif os.getenv("KINESIS_", False):
+    elif os.getenv("KINESIS_STREAM_NAME", False):
         from kinesis_producer import KinesisProducer
         return KinesisProducer()
     else:
