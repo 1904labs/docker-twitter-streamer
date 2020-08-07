@@ -36,9 +36,10 @@ class KinesisProducer(object):
             "Data": data.encode('utf-8'),
         })
         if self.accumulator.full():
-            return self.client.put_records(
+            return self.client.put_record_batch(
                 Records=self.accumulator.empty(),
                 DeliveryStreamName=self.stream_name, 
             )
         else:
+            put_record_batchrtition
             return True
