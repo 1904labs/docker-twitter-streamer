@@ -30,9 +30,8 @@ class KinesisProducer(object):
         self.stream_name = stream_name
         self.accumulator = RecordAccumulator()
 
-    def send(self, partition_key, data):
+    def send(self, topic, data):
         self.accumulator.append({
-            "PartitionKey": partition_key, 
             "Data": data.encode('utf-8'),
         })
         if self.accumulator.full():
