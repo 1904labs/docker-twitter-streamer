@@ -13,17 +13,18 @@ class RecordAccumulator(object):
     def __init__(self):
         self.limit = 20
         self.container = []
-    
+
     def empty(self):
         result, self.container = self.container, []
         return result
 
     def full(self):
         return True if len(self.container) >= self.limit else False
-    
+
     def append(self, record):
         self.container.append(record)
-        
+
+
 class KinesisProducer(object):
     def __init__(self, api_name, region_name, stream_name):
         self.client = boto3.client(api_name, region_name=region_name)
@@ -37,7 +38,7 @@ class KinesisProducer(object):
         if self.accumulator.full():
             return self.client.put_record_batch(
                 Records=self.accumulator.empty(),
-                DeliveryStreamName=self.stream_name, 
+                DeliveryStreamName=self.stream_name,
             )
         else:
             return True
