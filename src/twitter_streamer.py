@@ -12,7 +12,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__)))
 # addlib
 from tweepy_stream import TweepyStream
 
-logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
+logging.basicConfig(stream=sys.stdout, level=logging.ERROR)
 log = logging.getLogger(__name__)
 
 def get_producer():

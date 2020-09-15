@@ -16,7 +16,7 @@ LABEL maintainer="gjunge@1904labs.com" \
       org.label-schema.vcs-ref=${VCS_REF} \
       org.label-schema.vendor="1904labs" \
       org.label-schema.version=${BUILD_VERSION} \
-      org.label-schema.docker.cmd="docker run --rm 1904labs/twitter_stream:latest -f '#funny' -k <TWITTER_CONSUMER_KEY> -s <TWITTER_CONSUMER_SECRET> -a <TWITTER_ACCESS_TOKEN> -t <TWITTER_ACCESS_TOKEN_SECRET>"
+      org.label-schema.docker.cmd="docker run --rm 1904labs/twitter_stream:latest -f '#funny' -k \$TWITTER_CONSUMER_KEY -s \$TWITTER_CONSUMER_SECRET -a \$TWITTER_ACCESS_TOKEN -t \$TWITTER_ACCESS_TOKEN_SECRET"
 
 RUN set -ex && \
   pip install kafka-python==2.0.1 tweepy==3.9.0 boto3==1.13.23
