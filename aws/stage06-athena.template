@@ -1,0 +1,51 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Twitter streamer athena settings
+
+Parameters:
+  Namespace:
+    Type: String
+    Default: TwitterStreamerStack
+
+  QueriesBucket:
+    Type: 'AWS::S3::Bucket'
+    Properties:
+      BucketName:
+        !Join
+        - '-'
+        - - aws-athena-query-results
+          - !Ref 'AWS::AccountId'
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+        - ServerSideEncryptionByDefault:
+            SSEAlgorithm: AES256
+
+  PrimaryWorkGroup:
+    Type: AWS::Athena::WorkGroup
+    Properties:
+      Name: twitter-streamer
+      State: ENABLED
+      WorkGroupConfigurationUpdates:
+        EnforceWorkGroupConfiguration: False
+        PublishCloudWatchMetricsEnabled: false
+        RequesterPaysEnabled: false
+        ResultConfigurationUpdates:
+          EncryptionConfiguration:
+            EncryptionOption: SSE_S3
+          OutputLocation: !Join
+          - ""
+          - - s3://
+            - !Join
+              - '-'
+              - - aws-athena-query-results
+                - !Ref 'AWS::AccountId'
+
+# Type: AWS::Athena::NamedQuery
+# Properties:
+#   Database: "Covid19 tweets"
+#   Description: "Covid19"
+#   Name: covid19_twwets
+#   QueryString: !Join
+#   - ""
+#   - - select *
+#   - - from tweets
+#   - - where text
