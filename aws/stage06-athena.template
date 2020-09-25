@@ -6,18 +6,18 @@ Parameters:
     Type: String
     Default: TwitterStreamerStack
 
-  QueriesBucket:
-    Type: 'AWS::S3::Bucket'
-    Properties:
-      BucketName:
-        !Join
-        - '-'
-        - - aws-athena-query-results
-          - !Ref 'AWS::AccountId'
-      BucketEncryption:
-        ServerSideEncryptionConfiguration:
-        - ServerSideEncryptionByDefault:
-            SSEAlgorithm: AES256
+  # QueriesBucket:
+  #   Type: 'AWS::S3::Bucket'
+  #   Properties:
+  #     BucketName:
+  #       !Join
+  #       - '-'
+  #       - - aws-athena-query-results
+  #         - !Ref 'AWS::AccountId'
+  #     BucketEncryption:
+  #       ServerSideEncryptionConfiguration:
+  #       - ServerSideEncryptionByDefault:
+  #           SSEAlgorithm: AES256
 
   PrimaryWorkGroup:
     Type: AWS::Athena::WorkGroup
@@ -32,12 +32,10 @@ Parameters:
           EncryptionConfiguration:
             EncryptionOption: SSE_S3
           OutputLocation: !Join
-          - ""
-          - - s3://
-            - !Join
-              - '-'
-              - - aws-athena-query-results
-                - !Ref 'AWS::AccountId'
+          - ''
+          - - 's3://'
+            - Fn::ImportValue: !Sub '${Namespace}:TweetsBucket'
+            - '/queries/'
 
 # Type: AWS::Athena::NamedQuery
 # Properties:
