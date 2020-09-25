@@ -1,0 +1,305 @@
+
+AWSTemplateFormatVersion: 2010-09-09
+Description: Twitter streamer ecs/fargate producer
+Parameters:
+  Namespace:
+    Type: String
+    Default: TwitterStreamerStack
+  Image:
+    Type: String
+    Default: 1904labs/twitter-streamer:latest
+
+Resources:
+  # A security group for the containers we will run in Fargate.
+  # Rules are added to this security group based on what ingress you
+  # add for the cluster.
+  ContainerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Access to the Fargate containers
+      VpcId:
+        Fn::ImportValue: !Sub '${Namespace}:VpcId'
+
+  LogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Join ['', [/ecs/, !Ref 'AWS::StackName', TaskDefinition]]
+
+  EcsCluster:
+    Type: 'AWS::ECS::Cluster'
+    Properties:
+      ClusterName: !Join
+      - ''
+      - - !Ref 'AWS::StackName'
+        - 'Cluster'
+
+  # This is a role which is used by the ECS tasks themselves.
+  EcsTaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Effect: Allow
+          Action: ['sts:AssumeRole']
+          Principal:
+            Service: [ecs-tasks.amazonaws.com]
+      ManagedPolicyArns:
+      - 'arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy'
+      Policies:
+      - PolicyName: TwitterCredentialsPolicy
+        PolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+          - Effect: Allow
+            Action:
+            - secretsmanager:GetSecretValue
+            Resource:
+            - Fn::ImportValue: !Sub '${Namespace}:ConsumerKey'
+            - Fn::ImportValue: !Sub '${Namespace}:ConsumerSecret'
+            - Fn::ImportValue: !Sub '${Namespace}:AccessToken'
+            - Fn::ImportValue: !Sub '${Namespace}:AccessTokenSecret'
+
+  EcsTaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Effect: Allow
+          Action:
+          - 'sts:AssumeRole'
+          Principal:
+            Service:
+            - ecs-tasks.amazonaws.com
+      Policies:
+      - PolicyName: StreamToKinesisPolicy
+        PolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+          - Effect: Allow
+            Action:
+            - 'firehose:*'
+            Resource:
+            - Fn::ImportValue: !Sub '${Namespace}:TwitterStreamArn'
+
+  EcsTwitterStreamTask:
+    Type: 'AWS::ECS::TaskDefinition'
+    DependsOn:
+    - LogGroup
+    - EcsTaskRole
+    - EcsTaskExecutionRole
+    Properties:
+      Cpu: 512
+      Memory: 1024
+      NetworkMode: awsvpc
+      TaskRoleArn : !Ref EcsTaskRole
+      ExecutionRoleArn : !Ref EcsTaskExecutionRole
+      RequiresCompatibilities:
+      - FARGATE
+      ContainerDefinitions:
+      - Name: TwitterStream
+        Image: !Ref 'Image'
+        Command: [
+          "-f", "CaliforniaWildFire",
+          "-f", "CaliforniaFire",
+          "-f", "FireSeason2020",
+          "-f", "ValleyFire",
+          "-f", "WildFire",
+          "-f", "CreekFire",
+          "-f", "BearFire",
+          "-f", "CalFire",
+          "-f", "CAFire",
+          "-f", "CAwx",
+          ]
+        Secrets:
+        - Name: "TWITTER_CONSUMER_KEY"
+          ValueFrom:
+            Fn::ImportValue: !Sub '${Namespace}:ConsumerKey'
+        - Name: "TWITTER_CONSUMER_SECRET"
+          ValueFrom:
+            Fn::ImportValue: !Sub '${Namespace}:ConsumerSecret'
+        - Name: "TWITTER_ACCESS_TOKEN"
+          ValueFrom:
+            Fn::ImportValue: !Sub '${Namespace}:AccessToken'
+        - Name: "TWITTER_ACCESS_TOKEN_SECRET"
+          ValueFrom:
+            Fn::ImportValue: !Sub '${Namespace}:AccessTokenSecret'
+        environment:
+        - Name: KINESIS_API_NAME
+          Value: firehose
+        - Name: KINESIS_STREAM_NAME
+          Value:
+            Fn::ImportValue: !Sub '${Namespace}:TwitterStream'
+        - Name: KINESIS_REGION_NAME
+          Value: !Ref AWS::Region
+        LogConfiguration:
+          LogDriver: awslogs
+          Options:
+            awslogs-region: !Ref 'AWS::Region'
+            awslogs-group: !Ref LogGroup
+            awslogs-stream-prefix: ecs
+
+  EcsTwitterStreamService:
+    Type: 'AWS::ECS::Service'
+    DependsOn:
+    - EcsCluster
+    - EcsTwitterStreamTask
+    - ContainerSecurityGroup
+    Properties:
+      Cluster: !Ref EcsCluster
+      DesiredCount: 1
+      LaunchType: FARGATE
+      SchedulingStrategy: REPLICA
+      ServiceName: TwitterStreamService
+      TaskDefinition: !Ref EcsTwitterStreamTask
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: DISABLED
+          Subnets:
+            - Fn::ImportValue: !Sub '${Namespace}:PrivateSubnetOne'
+            - Fn::ImportValue: !Sub '${Namespace}:PrivateSubnetTwo'
+          SecurityGroups:
+            - !Ref ContainerSecurityGroup
+
+  CovidStreamTask:
+    Type: 'AWS::ECS::TaskDefinition'
+    DependsOn:
+    - LogGroup
+    - EcsTaskRole
+    - EcsTaskExecutionRole
+    Properties:
+      Cpu: 512
+      Memory: 1024
+      NetworkMode: awsvpc
+      TaskRoleArn : !Ref EcsTaskRole
+      ExecutionRoleArn : !Ref EcsTaskExecutionRole
+      RequiresCompatibilities:
+      - FARGATE
+      ContainerDefinitions:
+      - Name: CovidStream
+        Image: !Ref 'Image'
+        Command: [
+          "-f", "covid19",
+          ]
+        Secrets:
+        - Name: "TWITTER_CONSUMER_KEY"
+          ValueFrom:
+            Fn::ImportValue: !Sub '${Namespace}:ConsumerKey'
+        - Name: "TWITTER_CONSUMER_SECRET"
+          ValueFrom:
+            Fn::ImportValue: !Sub '${Namespace}:ConsumerSecret'
+        - Name: "TWITTER_ACCESS_TOKEN"
+          ValueFrom:
+            Fn::ImportValue: !Sub '${Namespace}:AccessToken'
+        - Name: "TWITTER_ACCESS_TOKEN_SECRET"
+          ValueFrom:
+            Fn::ImportValue: !Sub '${Namespace}:AccessTokenSecret'
+        environment:
+        - Name: KINESIS_API_NAME
+          Value: firehose
+        - Name: KINESIS_STREAM_NAME
+          Value:
+            Fn::ImportValue: !Sub '${Namespace}:TwitterStream'
+        - Name: KINESIS_REGION_NAME
+          Value: !Ref AWS::Region
+        LogConfiguration:
+          LogDriver: awslogs
+          Options:
+            awslogs-region: !Ref 'AWS::Region'
+            awslogs-group: !Ref LogGroup
+            awslogs-stream-prefix: ecs
+
+  CovidStreamService:
+    Type: 'AWS::ECS::Service'
+    DependsOn:
+    - EcsCluster
+    - EcsTwitterStreamTask
+    - ContainerSecurityGroup
+    Properties:
+      Cluster: !Ref EcsCluster
+      DesiredCount: 1
+      LaunchType: FARGATE
+      SchedulingStrategy: REPLICA
+      ServiceName: CovidStreamService
+      TaskDefinition: !Ref CovidStreamTask
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: DISABLED
+          Subnets:
+            - Fn::ImportValue: !Sub '${Namespace}:PrivateSubnetOne'
+            - Fn::ImportValue: !Sub '${Namespace}:PrivateSubnetTwo'
+          SecurityGroups:
+            - !Ref ContainerSecurityGroup
+
+  HurricaneStreamTask:
+    Type: 'AWS::ECS::TaskDefinition'
+    DependsOn:
+    - LogGroup
+    - EcsTaskRole
+    - EcsTaskExecutionRole
+    Properties:
+      Cpu: 512
+      Memory: 1024
+      NetworkMode: awsvpc
+      TaskRoleArn : !Ref EcsTaskRole
+      ExecutionRoleArn : !Ref EcsTaskExecutionRole
+      RequiresCompatibilities:
+      - FARGATE
+      ContainerDefinitions:
+      - Name: HurricaneStream
+        Image: !Ref 'Image'
+        Command: [
+          "-f", "#Paulette",
+          "-f", "#Rene",
+          "-f", "#Sally",
+          "-f", "#Teddy",
+          "-f", "#Vicky",
+          ]
+        Secrets:
+        - Name: "TWITTER_CONSUMER_KEY"
+          ValueFrom:
+            Fn::ImportValue: !Sub '${Namespace}:ConsumerKey'
+        - Name: "TWITTER_CONSUMER_SECRET"
+          ValueFrom:
+            Fn::ImportValue: !Sub '${Namespace}:ConsumerSecret'
+        - Name: "TWITTER_ACCESS_TOKEN"
+          ValueFrom:
+            Fn::ImportValue: !Sub '${Namespace}:AccessToken'
+        - Name: "TWITTER_ACCESS_TOKEN_SECRET"
+          ValueFrom:
+            Fn::ImportValue: !Sub '${Namespace}:AccessTokenSecret'
+        environment:
+        - Name: KINESIS_API_NAME
+          Value: firehose
+        - Name: KINESIS_STREAM_NAME
+          Value:
+            Fn::ImportValue: !Sub '${Namespace}:TwitterStream'
+        - Name: KINESIS_REGION_NAME
+          Value: !Ref AWS::Region
+        LogConfiguration:
+          LogDriver: awslogs
+          Options:
+            awslogs-region: !Ref 'AWS::Region'
+            awslogs-group: !Ref LogGroup
+            awslogs-stream-prefix: ecs
+
+  HurricaneStreamService:
+    Type: 'AWS::ECS::Service'
+    DependsOn:
+    - EcsCluster
+    - EcsTwitterStreamTask
+    - ContainerSecurityGroup
+    Properties:
+      Cluster: !Ref EcsCluster
+      DesiredCount: 1
+      LaunchType: FARGATE
+      SchedulingStrategy: REPLICA
+      ServiceName: HurricaneStreamService
+      TaskDefinition: !Ref HurricaneStreamTask
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: DISABLED
+          Subnets:
+            - Fn::ImportValue: !Sub '${Namespace}:PrivateSubnetOne'
+            - Fn::ImportValue: !Sub '${Namespace}:PrivateSubnetTwo'
+          SecurityGroups:
+            - !Ref ContainerSecurityGroup

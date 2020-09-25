@@ -1,0 +1,67 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Twitter streamer buckets
+Parameters:
+  Namespace:
+    Type: String
+    Default: TwitterStreamerStack
+  BucketName:
+    Type: String
+    Default: twitter-stream-data
+
+Resources:
+
+  TweetsBucket:
+    Type: 'AWS::S3::Bucket'
+    Properties:
+      BucketName:
+        !Join
+        - '-'
+        - - !Ref 'BucketName'
+          - !Ref 'AWS::AccountId'
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+        - ServerSideEncryptionByDefault:
+            SSEAlgorithm: AES256
+
+  TweetsBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref TweetsBucket
+      PolicyDocument:
+        Statement:
+        - Action:
+          - "s3:GetBucketLocation"
+          - "s3:GetObject"
+          - "s3:ListBucket"
+          - "s3:ListBucketMultipartUploads"
+          - "s3:ListMultipartUploadParts"
+          - "s3:AbortMultipartUpload"
+          - "s3:PutObject"
+          Effect: "Allow"
+          Resource:
+          - Fn::Join:
+            - ""
+            - - "arn:aws:s3:::"
+              - !Ref TweetsBucket
+          - Fn::Join:
+            - ""
+            - - "arn:aws:s3:::"
+              - !Ref TweetsBucket
+              - /*
+          Principal:
+            AWS:
+            - Fn::Join:
+              - ""
+              - - "arn:aws:iam::"
+                - !Ref 'AWS::AccountId'
+                - ":root"
+
+Outputs:
+  TweetsBucket:
+    Value: !Ref 'TweetsBucket'
+    Export:
+      Name: !Join [ ':', [ !Ref 'Namespace', 'TweetsBucket' ] ]
+  TweetsBucketArn:
+    Value: !GetAtt 'TweetsBucket.Arn'
+    Export:
+      Name: !Join [ ':', [ !Ref 'Namespace', 'TweetsBucketArn' ] ]
